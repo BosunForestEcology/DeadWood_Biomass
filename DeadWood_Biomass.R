@@ -17,15 +17,10 @@ defineModule(sim, list(
   documentation = list(),
   reqdPkgs    = list("data.table", "terra", "ggplot2", "SpaDES.core (>= 3.0.0)"),
   parameters  = bindrows(
-    defineParameter("DRFLookup", "data.table",
-                    data.table::data.table(species = character(), pool = character(),
-                                           DC = integer(), DRF = numeric()),
-                    NA, NA,
-                    desc = "Density reduction factor lookup: species, pool, DC, DRF."),
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA,
                     desc = "Simulation time for first plot. NA = no plots."),
-    defineParameter(".plotInterval",    "numeric",  1, NA, NA,
-                    desc = "Interval between plots.")
+    defineParameter(".plotInterval",    "numeric",  5, NA, NA,
+                    desc = "Interval between plots (years). Defaults to 5 to match transition timestep.")
   ),
   inputObjects = bindrows(
     expectsInput("snagTable", "data.table",
@@ -37,9 +32,9 @@ defineModule(sim, list(
   ),
   outputObjects = bindrows(
     createsOutput("snagBiomass_Mg_ha", "SpatRaster",
-                  desc = "Pixel-level snag biomass (Mg ha-1)."),
+                  desc = "Pixel-level snag biomass at death (Mg ha-1), summed across decay classes. No DRF applied."),
     createsOutput("DWDBiomass_Mg_ha", "SpatRaster",
-                  desc = "Pixel-level DWD biomass (Mg ha-1)."),
+                  desc = "Pixel-level DWD biomass at death (Mg ha-1), summed across decay classes. No DRF applied."),
     createsOutput("snagHistory", "SpatRaster",
                   desc = "Multi-layer raster of snag biomass snapshots at each plot interval."),
     createsOutput("DWDHistory", "SpatRaster",
@@ -52,14 +47,14 @@ doEvent.DeadWood_Biomass <- function(sim, eventTime, eventType, debug = FALSE) {
     eventType,
     init = {
       sim <- Init(sim)
-      sim <- scheduleEvent(sim, start(sim) + 1, "DeadWood_Biomass", "annual", eventPriority = 4)
+      sim <- scheduleEvent(sim, start(sim) + 5, "DeadWood_Biomass", "transition", eventPriority = 4)
       if (!is.na(P(sim)$.plotInitialTime))
         sim <- scheduleEvent(sim, P(sim)$.plotInitialTime,
                              "DeadWood_Biomass", "plot", eventPriority = 5)
     },
-    annual = {
-      sim <- Annual(sim)
-      sim <- scheduleEvent(sim, time(sim) + 1, "DeadWood_Biomass", "annual", eventPriority = 4)
+    transition = {
+      sim <- Transition(sim)
+      sim <- scheduleEvent(sim, time(sim) + 5, "DeadWood_Biomass", "transition", eventPriority = 4)
     },
     plot = {
       sim <- Snapshot(sim)
@@ -73,8 +68,6 @@ doEvent.DeadWood_Biomass <- function(sim, eventTime, eventType, debug = FALSE) {
 }
 
 Init <- function(sim) {
-  if (nrow(P(sim)$DRFLookup) == 0L)
-    stop("DRFLookup is empty — provide a density reduction factor table in params.")
   # terra::values<- deep-copies before writing, so studyAreaRaster is not modified
   sim$snagBiomass_Mg_ha <- sim$studyAreaRaster
   terra::values(sim$snagBiomass_Mg_ha) <- NA_real_
@@ -85,18 +78,12 @@ Init <- function(sim) {
   return(invisible(sim))
 }
 
-Annual <- function(sim) {
-  drf <- P(sim)$DRFLookup
-
-  # Right join: inventory rows with no matching DRF get DRF=NA; na.rm=TRUE silently drops them
-  snagWithBiomass <- drf[pool == "snag"][sim$snagTable, on = .(species, DC)]
-  snagWithBiomass[, currentBiomass := initBiomass * DRF]
-  snagByPixel <- snagWithBiomass[, .(value = sum(currentBiomass, na.rm = TRUE)), by = pixelID]
+Transition <- function(sim) {
+  # Sum initBiomass (biomass at death) by pixel — no DRF applied
+  snagByPixel <- sim$snagTable[, .(value = sum(initBiomass, na.rm = TRUE)), by = pixelID]
   sim$snagBiomass_Mg_ha <- pixelValuesToRaster(snagByPixel, sim$studyAreaRaster)
 
-  DWDwithBiomass <- drf[pool == "DWD"][sim$DWDTable, on = .(species, DC)]
-  DWDwithBiomass[, currentBiomass := initBiomass * DRF]
-  DWDbyPixel <- DWDwithBiomass[, .(value = sum(currentBiomass, na.rm = TRUE)), by = pixelID]
+  DWDbyPixel <- sim$DWDTable[, .(value = sum(initBiomass, na.rm = TRUE)), by = pixelID]
   sim$DWDBiomass_Mg_ha <- pixelValuesToRaster(DWDbyPixel, sim$studyAreaRaster)
 
   return(invisible(sim))
