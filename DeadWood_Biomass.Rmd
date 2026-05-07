@@ -1,0 +1,81 @@
+---
+title: "DeadWood_Biomass"
+author: ""
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{DeadWood_Biomass}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+## Overview
+
+`DeadWood_Biomass` translates snag and DWD decay class inventories into
+pixel-level biomass estimates (Mg ha⁻¹) by joining each record to a
+species- and pool-specific density reduction factor (DRF) lookup table.
+Optionally saves multi-layer biomass snapshot rasters at a configurable
+plot interval.
+
+## Inputs
+
+| Object | Class | Description |
+|--------|-------|-------------|
+| `snagTable` | `data.table` | Current snag inventory from `DeadWood_snagDecay` |
+| `DWDTable` | `data.table` | Current DWD inventory from `DeadWood_DWDDecay` |
+| `studyAreaRaster` | `SpatRaster` | Template raster defining pixel grid, CRS, and resolution |
+
+## Outputs
+
+| Object | Class | Description |
+|--------|-------|-------------|
+| `snagBiomass_Mg_ha` | `SpatRaster` | Pixel-level snag biomass (Mg ha⁻¹) |
+| `DWDBiomass_Mg_ha` | `SpatRaster` | Pixel-level DWD biomass (Mg ha⁻¹) |
+| `snagHistory` | `SpatRaster` | Multi-layer snag biomass snapshots (one layer per plot interval) |
+| `DWDHistory` | `SpatRaster` | Multi-layer DWD biomass snapshots (one layer per plot interval) |
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `DRFLookup` | `data.table` | Empty table | Density reduction factors: `species`, `pool`, `DC`, `DRF` |
+| `.plotInitialTime` | `numeric` | `NA` | Simulation time for first snapshot. `NA` = no snapshots |
+| `.plotInterval` | `numeric` | `1` | Years between snapshots |
+
+## Example
+
+```{r example}
+library(SpaDES.core)
+library(data.table)
+library(terra)
+
+DRFLookup <- data.table(
+  species = "Pinus strobus",
+  pool    = rep(c("snag", "DWD"), each = 5),
+  DC      = rep(1:5, 2),
+  DRF     = c(1.000, 0.841, 0.706, 0.543, 0.382,
+              1.000, 0.783, 0.614, 0.418, 0.251)
+)
+
+mySim <- simInit(
+  times   = list(start = 0, end = 50),
+  modules = list("DeadWood_Biomass"),
+  params  = list(DeadWood_Biomass = list(
+    DRFLookup        = DRFLookup,
+    .plotInitialTime = 5,
+    .plotInterval    = 5
+  )),
+  objects = list(
+    snagTable       = snagTable,
+    DWDTable        = DWDTable,
+    studyAreaRaster = myRaster
+  ),
+  paths = list(modulePath = "path/to/modules")
+)
+
+mySim <- spades(mySim)
+```
