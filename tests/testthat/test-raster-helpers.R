@@ -8,7 +8,7 @@ library(testthat)
 if (!dir.exists(file.path(.projRoot, "modules"))) {
   .projRoot <- getwd()
 }
-source(file.path(.projRoot, "modules", "deadWoodBiomass", "R", "raster-helpers.R"))
+source(file.path(.projRoot, "modules", "DeadWood_Biomass", "R", "raster-helpers.R"))
 
 test_that("pixelValuesToRaster assigns values to correct pixels", {
   template <- terra::rast(nrows = 3, ncols = 3,
