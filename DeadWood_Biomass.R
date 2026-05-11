@@ -20,19 +20,7 @@ defineModule(sim, list(
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA,
                     desc = "Simulation time for first plot. NA = no plots."),
     defineParameter(".plotInterval",    "numeric",  5, NA, NA,
-                    desc = "Interval between plots (years). Defaults to 5 to match transition timestep."),
-    defineParameter("DRFLookup", "data.table",
-                    data.table::data.table(
-                      species = "Pinus strobus",
-                      pool    = rep(c("snag", "DWD"), each = 5),
-                      DC      = rep(1:5, times = 2),
-                      DRF     = c(1.000, 0.841, 0.706, 0.543, 0.382,
-                                  1.000, 0.783, 0.614, 0.418, 0.251)
-                    ),
-                    NA, NA,
-                    desc = "Density reduction factors by species, pool (snag/DWD), and DC.
-                            Columns: species (chr), pool (chr), DC (int), DRF (num).
-                            currentBiomass = initBiomass * DRF. Source: Paper 2 Appendix D.")
+                    desc = "Interval between plots (years). Defaults to 5 to match transition timestep.")
   ),
   inputObjects = bindrows(
     expectsInput("snagTable", "data.table",
@@ -44,9 +32,9 @@ defineModule(sim, list(
   ),
   outputObjects = bindrows(
     createsOutput("snagBiomass_Mg_ha", "SpatRaster",
-                  desc = "Pixel-level snag current biomass (Mg ha-1), summed across decay classes with DRF applied."),
+                  desc = "Pixel-level snag biomass at death (Mg ha-1), summed across decay classes. No DRF applied."),
     createsOutput("DWDBiomass_Mg_ha", "SpatRaster",
-                  desc = "Pixel-level DWD current biomass (Mg ha-1), summed across decay classes with DRF applied."),
+                  desc = "Pixel-level DWD biomass at death (Mg ha-1), summed across decay classes. No DRF applied."),
     createsOutput("snagHistory", "SpatRaster",
                   desc = "Multi-layer raster of snag biomass snapshots at each plot interval."),
     createsOutput("DWDHistory", "SpatRaster",
@@ -91,16 +79,11 @@ Init <- function(sim) {
 }
 
 Transition <- function(sim) {
-  drf <- P(sim)$DRFLookup
-
-  snagDRF     <- drf[pool == "snag", .(species, DC, DRF)]
-  snagJoined  <- snagDRF[sim$snagTable, on = c("species", "DC")]
-  snagByPixel <- snagJoined[, .(value = sum(initBiomass * DRF, na.rm = TRUE)), by = pixelID]
+  # Sum initBiomass (biomass at death) by pixel — no DRF applied
+  snagByPixel <- sim$snagTable[, .(value = sum(initBiomass, na.rm = TRUE)), by = pixelID]
   sim$snagBiomass_Mg_ha <- pixelValuesToRaster(snagByPixel, sim$studyAreaRaster)
 
-  DWDdrf     <- drf[pool == "DWD", .(species, DC, DRF)]
-  DWDjoined  <- DWDdrf[sim$DWDTable, on = c("species", "DC")]
-  DWDbyPixel <- DWDjoined[, .(value = sum(initBiomass * DRF, na.rm = TRUE)), by = pixelID]
+  DWDbyPixel <- sim$DWDTable[, .(value = sum(initBiomass, na.rm = TRUE)), by = pixelID]
   sim$DWDBiomass_Mg_ha <- pixelValuesToRaster(DWDbyPixel, sim$studyAreaRaster)
 
   return(invisible(sim))
