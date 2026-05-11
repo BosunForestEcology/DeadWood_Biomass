@@ -41,7 +41,7 @@ testInit <- function(moduleName, params, objects, times = list(start = 0, end = 
 test_that("deadWoodBiomass init creates snagBiomass and DWDBiomass rasters", {
   sim <- testInit(
     "DeadWood_Biomass",
-    params  = list(deadWoodBiomass = list(DRFLookup = DRFLookup_test)),
+    params  = list(DeadWood_Biomass = list(DRFLookup = DRFLookup_test)),
     objects = list(
       snagTable       = data.table::copy(emptySnagTable),
       DWDTable        = data.table::copy(emptySnagTable),
@@ -55,46 +55,46 @@ test_that("deadWoodBiomass init creates snagBiomass and DWDBiomass rasters", {
   expect_true(all(is.na(terra::values(sim$DWDBiomass_Mg_ha))))
 })
 
-test_that("deadWoodBiomass annual computes snag biomass correctly for DC1", {
+test_that("deadWoodBiomass transition computes snag biomass correctly for DC1", {
   # DC1 snag: DRF = 1.0, so currentBiomass == initBiomass
   snagTable <- data.table(
     pixelID = 1L, species = "Pinus strobus", DC = 1L, ageInDC = 0L, initBiomass = 12.0
   )
   sim <- testInit(
     "DeadWood_Biomass",
-    times   = list(start = 0, end = 1),
-    params  = list(deadWoodBiomass = list(DRFLookup = DRFLookup_test)),
+    times   = list(start = 0, end = 5),
+    params  = list(DeadWood_Biomass = list(DRFLookup = DRFLookup_test)),
     objects = list(
       snagTable       = snagTable,
       DWDTable        = data.table::copy(emptySnagTable),
       studyAreaRaster = templateRaster
     )
   )
-  sim <- spades(sim, events = c("init", "annual"))
+  sim <- spades(sim, events = c("init", "transition"))
   expect_equal(unname(terra::values(sim$snagBiomass_Mg_ha)[1, 1]), 12.0)
   expect_true(all(is.na(terra::values(sim$DWDBiomass_Mg_ha))))
 })
 
-test_that("deadWoodBiomass annual applies DRF correctly for DC3 DWD", {
+test_that("deadWoodBiomass transition applies DRF correctly for DC3 DWD", {
   # DC3 DWD DRF = 0.614; initBiomass = 10 -> currentBiomass = 6.14
   DWDTable <- data.table(
     pixelID = 2L, species = "Pinus strobus", DC = 3L, ageInDC = 1L, initBiomass = 10.0
   )
   sim <- testInit(
     "DeadWood_Biomass",
-    times   = list(start = 0, end = 1),
-    params  = list(deadWoodBiomass = list(DRFLookup = DRFLookup_test)),
+    times   = list(start = 0, end = 5),
+    params  = list(DeadWood_Biomass = list(DRFLookup = DRFLookup_test)),
     objects = list(
       snagTable       = data.table::copy(emptySnagTable),
       DWDTable        = DWDTable,
       studyAreaRaster = templateRaster
     )
   )
-  sim <- spades(sim, events = c("init", "annual"))
+  sim <- spades(sim, events = c("init", "transition"))
   expect_equal(unname(terra::values(sim$DWDBiomass_Mg_ha)[2, 1]), 10.0 * 0.614, tolerance = 1e-6)
 })
 
-test_that("deadWoodBiomass annual aggregates multiple records per pixel", {
+test_that("deadWoodBiomass transition aggregates multiple records per pixel", {
   # Two DC2 snags in pixel 3: 5 + 8 = 13 Mg/ha, each x DRF 0.841 = 10.933
   snagTable <- data.table(
     pixelID     = c(3L, 3L),
@@ -105,14 +105,14 @@ test_that("deadWoodBiomass annual aggregates multiple records per pixel", {
   )
   sim <- testInit(
     "DeadWood_Biomass",
-    times   = list(start = 0, end = 1),
-    params  = list(deadWoodBiomass = list(DRFLookup = DRFLookup_test)),
+    times   = list(start = 0, end = 5),
+    params  = list(DeadWood_Biomass = list(DRFLookup = DRFLookup_test)),
     objects = list(
       snagTable       = snagTable,
       DWDTable        = data.table::copy(emptySnagTable),
       studyAreaRaster = templateRaster
     )
   )
-  sim <- spades(sim, events = c("init", "annual"))
+  sim <- spades(sim, events = c("init", "transition"))
   expect_equal(unname(terra::values(sim$snagBiomass_Mg_ha)[3, 1]), (5.0 + 8.0) * 0.841, tolerance = 1e-6)
 })

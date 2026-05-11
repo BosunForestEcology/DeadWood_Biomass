@@ -37,8 +37,8 @@ time-series of biomass snapshots for visualization and analysis.
 
 | Object | Class | Description |
 |--------|-------|-------------|
-| `snagBiomass_Mg_ha` | `SpatRaster` | Pixel-level total snag biomass (Mg ha⁻¹), updated every 5 years. Pixels with no snags have value `NA`. |
-| `DWDBiomass_Mg_ha` | `SpatRaster` | Pixel-level total DWD biomass (Mg ha⁻¹), updated every 5 years. Pixels with no DWD have value `NA`. |
+| `snagBiomass_Mg_ha` | `SpatRaster` | Pixel-level snag current biomass (Mg ha⁻¹), updated every 5 years. Integrates DRF by decay class. Pixels with no snags have value `NA`. |
+| `DWDBiomass_Mg_ha` | `SpatRaster` | Pixel-level DWD current biomass (Mg ha⁻¹), updated every 5 years. Integrates DRF by decay class. Pixels with no DWD have value `NA`. |
 | `snagHistory` | `SpatRaster` | Multi-layer raster accumulating one snag biomass snapshot per plot event (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
 | `DWDHistory` | `SpatRaster` | Multi-layer raster accumulating one DWD biomass snapshot per plot event (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
 
@@ -50,6 +50,7 @@ time-series of biomass snapshots for visualization and analysis.
 |-----------|------|---------|-------------|
 | `.plotInitialTime` | numeric | `NA` | Simulation time of the first snapshot. Set to `NA` to disable snapshot accumulation entirely. |
 | `.plotInterval` | numeric | `5` | Interval (years) between snapshots. Defaults to 5 to align with the decay timestep. Only used if `.plotInitialTime` is not `NA`. |
+| `DRFLookup` | `data.table` | *Pinus strobus* defaults | Density reduction factors by species, pool (`"snag"` or `"DWD"`), and DC. Columns: `species` (chr), `pool` (chr), `DC` (int), `DRF` (num). Default values from Paper 2 Appendix D. |
 
 ---
 
@@ -72,22 +73,16 @@ both pools.
 
 **Biomass calculation:**
 
-For each pool, the current `initBiomass` values in the inventory table are
-summed by pixel:
+For each pool, `initBiomass` (biomass at time of death) is multiplied by the
+decay-class-specific density reduction factor (DRF) and summed by pixel:
 
-$$\text{snagBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
+$$\text{snagBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i \times \text{DRF}[\text{species}_i,\; \text{snag},\; \text{DC}_i]$$
 
-$$\text{DWDBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
+$$\text{DWDBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i \times \text{DRF}[\text{species}_i,\; \text{DWD},\; \text{DC}_i]$$
 
-where $p$ is a pixel index and $i$ indexes individual pieces. Pixels with no
-pieces receive `NA`.
-
-**Note on `initBiomass`:** This field stores each piece's biomass *at the time
-of death* (i.e., original biomass before any decay). The module currently
-reports this as a proxy for the amount of dead wood material present in each
-pool. It does **not** apply decay-class-specific density reduction factors
-(DRF) to convert standing-dead or downed biomass to its current structural
-condition. A future version may apply DRF scaling.
+where $p$ is a pixel index, $i$ indexes individual pieces, and DRF values come
+from the `DRFLookup` parameter. DRF < 1 for DC > 1 reflects the reduction in
+wood density as decomposition progresses. Pixels with no pieces receive `NA`.
 
 The resulting pixel vectors are mapped onto a copy of `studyAreaRaster` using
 `pixelValuesToRaster()`, which sets all pixels not present in the table to `NA`.
