@@ -105,3 +105,31 @@ test_that("deadWoodBiomass transition aggregates multiple records per pixel", {
   sim <- spades(sim, events = c("init", "transition"))
   expect_equal(unname(terra::values(sim$snagBiomass_Mg_ha)[3, 1]), 13.0)
 })
+
+test_that("deadWoodBiomass snapshot populates snagHistoryBySpecies with correct per-species values", {
+  snagTable <- data.table(
+    pixelID     = c(1L, 2L),
+    species     = c("Pinus strobus", "Pinus resinosa"),
+    DC          = c(1L, 2L),
+    ageInDC     = c(0L, 0L),
+    initBiomass = c(10.0, 8.0)
+  )
+  sim <- testInit(
+    "DeadWood_Biomass",
+    times  = list(start = 0, end = 5),
+    params = list(DeadWood_Biomass = list(.plotInitialTime = 5)),
+    objects = list(
+      snagTable       = snagTable,
+      DWDTable        = data.table::copy(emptySnagTable),
+      studyAreaRaster = templateRaster
+    )
+  )
+  sim <- spades(sim)
+  expect_true(is.list(sim$snagHistoryBySpecies))
+  expect_true("Pinus strobus"  %in% names(sim$snagHistoryBySpecies))
+  expect_true("Pinus resinosa" %in% names(sim$snagHistoryBySpecies))
+  expect_equal(unname(terra::values(sim$snagHistoryBySpecies[["Pinus strobus"]])[1, 1]),  10.0)
+  expect_equal(unname(terra::values(sim$snagHistoryBySpecies[["Pinus resinosa"]])[2, 1]),  8.0)
+  expect_true(is.na(terra::values(sim$snagHistoryBySpecies[["Pinus strobus"]])[2, 1]))
+  expect_true(is.na(terra::values(sim$snagHistoryBySpecies[["Pinus resinosa"]])[1, 1]))
+})

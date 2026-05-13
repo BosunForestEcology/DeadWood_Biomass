@@ -36,9 +36,13 @@ defineModule(sim, list(
     createsOutput("DWDBiomass_Mg_ha", "SpatRaster",
                   desc = "Pixel-level DWD biomass at death (Mg ha-1), summed across decay classes. No DRF applied."),
     createsOutput("snagHistory", "SpatRaster",
-                  desc = "Multi-layer raster of snag biomass snapshots at each plot interval."),
+                  desc = "Multi-layer raster of snag biomass snapshots at each plot interval (all species combined)."),
     createsOutput("DWDHistory", "SpatRaster",
-                  desc = "Multi-layer raster of DWD biomass snapshots at each plot interval.")
+                  desc = "Multi-layer raster of DWD biomass snapshots at each plot interval (all species combined)."),
+    createsOutput("snagHistoryBySpecies", "list",
+                  desc = "Named list of multi-layer SpatRasters of snag biomass snapshots per species."),
+    createsOutput("DWDHistoryBySpecies", "list",
+                  desc = "Named list of multi-layer SpatRasters of DWD biomass snapshots per species.")
   )
 ))
 
@@ -73,8 +77,10 @@ Init <- function(sim) {
   terra::values(sim$snagBiomass_Mg_ha) <- NA_real_
   sim$DWDBiomass_Mg_ha  <- sim$studyAreaRaster
   terra::values(sim$DWDBiomass_Mg_ha)  <- NA_real_
-  sim$snagHistory <- NULL
-  sim$DWDHistory  <- NULL
+  sim$snagHistory          <- NULL
+  sim$DWDHistory           <- NULL
+  sim$snagHistoryBySpecies <- list()
+  sim$DWDHistoryBySpecies  <- list()
   return(invisible(sim))
 }
 
@@ -97,5 +103,21 @@ Snapshot <- function(sim) {
   names(DWDLayer)  <- paste0("yr", yr)
   sim$snagHistory <- if (is.null(sim$snagHistory)) snagLayer else c(sim$snagHistory, snagLayer)
   sim$DWDHistory  <- if (is.null(sim$DWDHistory))  DWDLayer  else c(sim$DWDHistory,  DWDLayer)
+
+  allSp <- unique(c(sim$snagTable$species, sim$DWDTable$species))
+  for (sp in allSp) {
+    snagSp      <- sim$snagTable[species == sp, .(value = sum(initBiomass, na.rm = TRUE)), by = pixelID]
+    spSnagLayer <- pixelValuesToRaster(snagSp, sim$studyAreaRaster)
+    names(spSnagLayer) <- paste0("yr", yr)
+    sim$snagHistoryBySpecies[[sp]] <-
+      if (is.null(sim$snagHistoryBySpecies[[sp]])) spSnagLayer else c(sim$snagHistoryBySpecies[[sp]], spSnagLayer)
+
+    DWDsp      <- sim$DWDTable[species == sp, .(value = sum(initBiomass, na.rm = TRUE)), by = pixelID]
+    spDWDLayer <- pixelValuesToRaster(DWDsp, sim$studyAreaRaster)
+    names(spDWDLayer) <- paste0("yr", yr)
+    sim$DWDHistoryBySpecies[[sp]] <-
+      if (is.null(sim$DWDHistoryBySpecies[[sp]])) spDWDLayer else c(sim$DWDHistoryBySpecies[[sp]], spDWDLayer)
+  }
+
   return(invisible(sim))
 }
