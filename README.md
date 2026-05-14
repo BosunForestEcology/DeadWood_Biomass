@@ -14,8 +14,8 @@ interval.
 
 | Object | Class | Description |
 |----|----|----|
-| `snagTable` | `data.table` | Current snag inventory from `DeadWood_snagDecay`. Must have columns `pixelID` (integer) and `initBiomass` (numeric, Mg ha⁻¹). |
-| `DWDTable` | `data.table` | Current DWD inventory from `DeadWood_DWDDecay`. Must have columns `pixelID` (integer) and `initBiomass` (numeric, Mg ha⁻¹). |
+| `snagTable` | `data.table` | Current snag inventory from `DeadWood_snagDecay`. Must have columns `pixelID` (integer), `initBiomass` (numeric, Mg ha⁻¹), and `species` (character). |
+| `DWDTable` | `data.table` | Current DWD inventory from `DeadWood_DWDDecay`. Must have columns `pixelID` (integer), `initBiomass` (numeric, Mg ha⁻¹), and `species` (character). |
 | `studyAreaRaster` | `SpatRaster` | Template raster defining the spatial grid (extent, CRS, resolution). All output rasters are created to match this template. |
 
 ## Outputs
@@ -139,3 +139,4 @@ par(mfrow = c(1, 1))
   3.0.0)
 - [`data.table`](https://CRAN.R-project.org/package=data.table)
 - [`terra`](https://CRAN.R-project.org/package=terra)
+- [`ggplot2`](https://CRAN.R-project.org/package=ggplot2)
