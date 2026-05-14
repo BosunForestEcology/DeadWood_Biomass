@@ -5,9 +5,9 @@ defineModule(sim, list(
                  estimates (Mg ha-1) using species- and pool-specific density reduction
                  factors (DRF) from Paper 2 Appendix D.",
   keywords    = c("dead wood", "biomass", "density reduction factor", "carbon"),
-  authors     = structure(list(list(given = "First", family = "Last",
+  authors     = structure(list(list(given = "Thomson", family = "Harris",
                                     role = c("aut", "cre"),
-                                    email = "email@example.com", comment = NULL)),
+                                    email = "BosunForestEcology@gmail.com", comment = NULL)),
                            class = "person"),
   childModules = character(0),
   version     = list(DeadWood_Biomass = "0.0.1"),
