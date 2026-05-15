@@ -1,6 +1,6 @@
 DeadWood_Biomass
 ================
-2026-05-11
+2026-05-15
 
 - [DeadWood_Biomass](#deadwood_biomass)
   - [Inputs](#inputs)
@@ -44,8 +44,8 @@ snapshots for visualization and analysis.
 
 | Object | Class | Description |
 |----|----|----|
-| `snagBiomass_Mg_ha` | `SpatRaster` | Pixel-level snag current biomass (Mg ha⁻¹), updated every 5 years. Integrates DRF by decay class. Pixels with no snags have value `NA`. |
-| `DWDBiomass_Mg_ha` | `SpatRaster` | Pixel-level DWD current biomass (Mg ha⁻¹), updated every 5 years. Integrates DRF by decay class. Pixels with no DWD have value `NA`. |
+| `snagBiomass_Mg_ha` | `SpatRaster` | Pixel-level total snag biomass (Mg ha⁻¹), updated every 5 years. Pixels with no snags have value `NA`. |
+| `DWDBiomass_Mg_ha` | `SpatRaster` | Pixel-level total DWD biomass (Mg ha⁻¹), updated every 5 years. Pixels with no DWD have value `NA`. |
 | `snagHistory` | `SpatRaster` | Multi-layer raster accumulating one snag biomass snapshot per plot event (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
 | `DWDHistory` | `SpatRaster` | Multi-layer raster accumulating one DWD biomass snapshot per plot event (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
 
@@ -57,7 +57,6 @@ snapshots for visualization and analysis.
 |----|----|----|----|
 | `.plotInitialTime` | numeric | `NA` | Simulation time of the first snapshot. Set to `NA` to disable snapshot accumulation entirely. |
 | `.plotInterval` | numeric | `5` | Interval (years) between snapshots. Defaults to 5 to align with the decay timestep. Only used if `.plotInitialTime` is not `NA`. |
-| `DRFLookup` | `data.table` | *Pinus strobus* defaults | Density reduction factors by species, pool (`"snag"` or `"DWD"`), and DC. Columns: `species` (chr), `pool` (chr), `DC` (int), `DRF` (num). Default values from Paper 2 Appendix D. |
 
 ------------------------------------------------------------------------
 
@@ -81,18 +80,17 @@ sums for both pools.
 
 **Biomass calculation:**
 
-For each pool, `initBiomass` (biomass at time of death) is multiplied by
-the decay-class-specific density reduction factor (DRF) and summed by
+For each pool, `initBiomass` (biomass at time of death) is summed by
 pixel:
 
-$$\text{snagBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i \times \text{DRF}[\text{species}_i,\; \text{snag},\; \text{DC}_i]$$
+$$\text{snagBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
 
-$$\text{DWDBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i \times \text{DRF}[\text{species}_i,\; \text{DWD},\; \text{DC}_i]$$
+$$\text{DWDBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
 
-where $p$ is a pixel index, $i$ indexes individual pieces, and DRF
-values come from the `DRFLookup` parameter. DRF \< 1 for DC \> 1
-reflects the reduction in wood density as decomposition progresses.
-Pixels with no pieces receive `NA`.
+where $p$ is a pixel index and $i$ indexes individual pieces.
+`initBiomass` represents biomass at time of death and has not been
+adjusted by a density reduction factor (DRF). DRF application is not yet
+implemented. Pixels with no pieces receive `NA`.
 
 The resulting pixel vectors are mapped onto a copy of `studyAreaRaster`
 using `pixelValuesToRaster()`, which sets all pixels not present in the
@@ -113,15 +111,18 @@ snapshot scheduled after `end(sim)` is not fired.
 ## Event scheduling and module interactions
 
 This module runs at the lowest priority within each 5-year timestep,
-after both decay modules have updated their inventories:
+after both decay modules have updated their inventories.
+`DeadWood_Mortality` fires every year; the remaining modules fire every
+5 years.
 
-| Priority | Module | Event | Purpose |
-|----|----|----|----|
-| 1 | `DeadWood_snagDecay` | `transition` | Advance snag DC, produce `fallenSnags` |
-| 2 | `DeadWood_DWDDecay` | `receive` | Accept `fallenSnags` into DWD pool |
-| 3 | `DeadWood_DWDDecay` | `transition` | Advance DWD DC via logistic model |
-| 4 | `DeadWood_Biomass` | `transition` | Compute biomass rasters ← **this module** |
-| 5 | `DeadWood_Biomass` | `plot` | Capture biomass snapshots ← **this module** |
+| Timestep | Priority | Module | Event | Purpose |
+|----|----|----|----|----|
+| every 1 yr | 0 | `DeadWood_Mortality` | `transition` | Apply baseline mortality, append to `cohortData` |
+| every 5 yr | 1 | `DeadWood_snagDecay` | `transition` | Advance snag DC, produce `fallenSnags` |
+| every 5 yr | 2 | `DeadWood_DWDDecay` | `receive` | Accept `fallenSnags` into DWD pool |
+| every 5 yr | 3 | `DeadWood_DWDDecay` | `transition` | Advance DWD DC via logistic model |
+| every 5 yr | 4 | `DeadWood_Biomass` | `transition` | Compute biomass rasters ← **this module** |
+| every 5 yr | 5 | `DeadWood_Biomass` | `plot` | Capture biomass snapshots ← **this module** |
 
 ------------------------------------------------------------------------
 
