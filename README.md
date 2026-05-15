@@ -1,6 +1,5 @@
 DeadWood_Biomass
 ================
-2026-05-15
 
 ## Overview
 
@@ -24,31 +23,17 @@ interval.
 |----|----|----|
 | `snagBiomass_Mg_ha` | `SpatRaster` | Pixel-level total snag biomass (Mg ha⁻¹), updated every 5 years. Pixels with no snags have value `NA`. |
 | `DWDBiomass_Mg_ha` | `SpatRaster` | Pixel-level total DWD biomass (Mg ha⁻¹), updated every 5 years. Pixels with no DWD have value `NA`. |
-<<<<<<< HEAD
-| `snagHistory` | `SpatRaster` | Multi-layer raster accumulating one snag biomass snapshot per plot event (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
-| `DWDHistory` | `SpatRaster` | Multi-layer raster accumulating one DWD biomass snapshot per plot event (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
-
-------------------------------------------------------------------------
-=======
 | `snagHistory` | `SpatRaster` | Multi-layer raster accumulating one snag biomass snapshot per plot event, all species combined (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
 | `DWDHistory` | `SpatRaster` | Multi-layer raster accumulating one DWD biomass snapshot per plot event, all species combined (layers named `yr<time>`). `NULL` if `.plotInitialTime` is `NA`. |
 | `snagHistoryBySpecies` | `list` | Named list of multi-layer SpatRasters of snag biomass snapshots, one entry per species. |
 | `DWDHistoryBySpecies` | `list` | Named list of multi-layer SpatRasters of DWD biomass snapshots, one entry per species. |
->>>>>>> 1a667e280c07c5262ca0975e8ad440e4d7414303
 
 ## Parameters
 
 | Parameter | Type | Default | Description |
 |----|----|----|----|
-<<<<<<< HEAD
-| `.plotInitialTime` | numeric | `NA` | Simulation time of the first snapshot. Set to `NA` to disable snapshot accumulation entirely. |
-| `.plotInterval` | numeric | `5` | Interval (years) between snapshots. Defaults to 5 to align with the decay timestep. Only used if `.plotInitialTime` is not `NA`. |
-
-------------------------------------------------------------------------
-=======
 | `.plotInitialTime` | `numeric` | `NA` | Simulation time of the first snapshot. Set to `NA` to disable snapshot accumulation entirely. |
 | `.plotInterval` | `numeric` | `5` | Interval (years) between snapshots. Defaults to 5 to align with the decay timestep. Only used if `.plotInitialTime` is not `NA`. |
->>>>>>> 1a667e280c07c5262ca0975e8ad440e4d7414303
 
 ## Events
 
@@ -71,30 +56,12 @@ death) is summed by pixel:
 
 $$\text{snagBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
 
-<<<<<<< HEAD
-For each pool, `initBiomass` (biomass at time of death) is summed by
-pixel:
-
-$$\text{snagBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
-
-$$\text{DWDBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
-
-where $p$ is a pixel index and $i$ indexes individual pieces.
-`initBiomass` represents biomass at time of death and has not been
-adjusted by a density reduction factor (DRF). DRF application is not yet
-implemented. Pixels with no pieces receive `NA`.
-
-The resulting pixel vectors are mapped onto a copy of `studyAreaRaster`
-using `pixelValuesToRaster()`, which sets all pixels not present in the
-table to `NA`.
-=======
 $$\text{DWDBiomass}[p] = \sum_{i \,:\, \text{pixelID}_i = p} \text{initBiomass}_i$$
 
 where $p$ is a pixel index and $i$ indexes individual pieces. Pixels
 with no pieces receive `NA`. Note: `initBiomass` represents biomass at
 time of death and has not been adjusted by a density reduction factor
 (DRF). DRF application is not yet implemented.
->>>>>>> 1a667e280c07c5262ca0975e8ad440e4d7414303
 
 ### `plot` (optional, every `.plotInterval` years, priority 5)
 
